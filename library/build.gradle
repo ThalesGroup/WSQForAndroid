@@ -1,0 +1,63 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+android {
+    compileSdkVersion 27
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 27
+        versionName "1.0"
+        versionCode 1
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+}
+
+ext {
+    bintrayRepo = 'maven'
+    bintrayName = 'WSQForAndroid'
+
+    publishedGroupId = 'com.gemalto.wsq'
+    libraryName = 'WSQForAndroid'
+    artifact = 'wsq-android'
+
+    libraryDescription = 'A WSQ image encoder/decoder for Android'
+
+    siteUrl = 'https://github.com/gemalto/WSQForAndroid'
+    gitUrl = 'https://github.com/gemalto/WSQForAndroid.git'
+
+    libraryVersion = '1.0'
+
+    developerId = 'michal-dvorak-thales'
+    developerName = 'Michal Dvorak'
+    developerEmail = 'michal.dvorak@thalesgroup.com'
+
+    licenseName = 'The 2-Clause BSD License'
+    licenseUrl = 'https://opensource.org/licenses/BSD-2-Clause'
+    allLicenses = ["BSD-2-Clause"]
+}
+
+apply from: 'bintray.gradle'

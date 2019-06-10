@@ -1,0 +1,2 @@
+include ':wsq-android', ':testapp'
+project(':wsq-android').projectDir = new File('library')

@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
                     while ((count = in.read(buffer)) >= 0) {
                         out.write(buffer, 0, count);
                     }
-                    ret = WSQDecoder.decode(out.toByteArray());
+                    ret = WSQDecoder.decode(out.toByteArray()).getBitmap();
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {

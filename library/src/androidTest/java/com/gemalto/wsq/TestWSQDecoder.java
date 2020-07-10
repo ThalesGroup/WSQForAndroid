@@ -50,21 +50,21 @@ public class TestWSQDecoder {
             out.write(util.loadAssetFile(wsqFiles[i]));
             out.close();
 
-            Bitmap decoded = WSQDecoder.decode(outFile.getPath());
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(outFile.getPath());
 
-            util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded, expected);
+            util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded.getBitmap(), expected);
             outFile.delete();
 
             //test decode from stream
             try (InputStream in = ctx.getAssets().open(wsqFiles[i])) {
                 decoded = WSQDecoder.decode(in);
-                util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded, expected);
+                util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded.getBitmap(), expected);
             }
 
             //test decode from byte array
             byte[] data = util.loadAssetFile(wsqFiles[i]);
             decoded = WSQDecoder.decode(data);
-            util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded, expected);
+            util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded.getBitmap(), expected);
         }
     }
 
@@ -142,8 +142,8 @@ public class TestWSQDecoder {
             try {
                 for (int i = 0; i < REPEATS; i++) {
                     //test byte array
-                    Bitmap decoded = WSQDecoder.decode(encoded);
-                    util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + pngFile, expected, decoded);
+                    WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(encoded);
+                    util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + pngFile, expected, decoded.getBitmap());
 
                     //test decode from file
                     File outFile = File.createTempFile("testjp2", "tmp", ctx.getFilesDir());
@@ -152,13 +152,13 @@ public class TestWSQDecoder {
                     out.close();
 
                     decoded = WSQDecoder.decode(outFile.getPath());
-                    util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + pngFile, expected, decoded);
+                    util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + pngFile, expected, decoded.getBitmap());
                     outFile.delete();
 
                     //test decode from stream
                     try (InputStream in = ctx.getAssets().open(wsqFile)) {
                         decoded = WSQDecoder.decode(in);
-                        util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + pngFile, expected, decoded);
+                        util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + pngFile, expected, decoded.getBitmap());
                     }
                 }
             } catch (Throwable e) {

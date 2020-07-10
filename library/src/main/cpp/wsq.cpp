@@ -24,6 +24,7 @@ int debug = 0;
 typedef struct image_data {
     jint width;
     jint height;
+    jint ppi;
     int* pixels;
 } image_data_t;
 
@@ -56,6 +57,7 @@ jint decodeWSQ(unsigned char *idata, int ilen, image_data_t *outImage) {
 
     outImage->height = height;
     outImage->width = width;
+    outImage->ppi = ppi;
     int length = height * width;
 
     outImage->pixels = (int *) malloc(sizeof(int) * length);
@@ -77,9 +79,9 @@ jint decodeWSQ(unsigned char *idata, int ilen, image_data_t *outImage) {
 
 jintArray prepareReturnData(JNIEnv *env, image_data_t *outImage) {
     //prepare return data: first three integers in the array are width, height, isAlpha, then image pixels
-    jintArray ret = env->NewIntArray(outImage->width * outImage->height + 2);
-    env->SetIntArrayRegion(ret, 0, 2, (jint*)outImage);
-    env->SetIntArrayRegion(ret, 2, outImage->width * outImage->height, outImage->pixels);
+    jintArray ret = env->NewIntArray(outImage->width * outImage->height + 3);
+    env->SetIntArrayRegion(ret, 0, 3, (jint*)outImage);
+    env->SetIntArrayRegion(ret, 3, outImage->width * outImage->height, outImage->pixels);
     free(outImage->pixels);
     outImage->pixels = NULL;
     return ret;

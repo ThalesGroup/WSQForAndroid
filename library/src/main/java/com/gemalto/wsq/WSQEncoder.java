@@ -63,8 +63,10 @@ public class WSQEncoder {
      * Sets the image resolution (pixels per inch). Default value: {@link #UNKNOWN_PPI}.
      * @param ppi the image resolution to use
      * @return this {@code WSQEncoder} instance
+     * @throws IllegalArgumentException if {@code ppi &lt; -1}
      */
     public WSQEncoder setPpi(final int ppi) {
+        if (ppi < -1) throw new IllegalArgumentException("PPI must be positive or -1");
         this.ppi = ppi;
         return this;
     }

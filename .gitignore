@@ -16,3 +16,4 @@ library/makecmakelist.bat
 
 testapp/build
 testapp/.externalNativeBuild
+library/.cxx/

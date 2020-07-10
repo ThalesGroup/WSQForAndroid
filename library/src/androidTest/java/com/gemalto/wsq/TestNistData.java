@@ -2,7 +2,6 @@ package com.gemalto.wsq;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
@@ -45,7 +44,7 @@ public class TestNistData {
         for (String wsqFile : wsqFiles) {
             String expectedFile = wsqFile.replace("nist/wsq", "nist/wsq_decoded").replace(".wsq", ".webp");
             Bitmap expected = util.loadAssetBitmap(expectedFile);
-            Bitmap decoded = WSQDecoder.decode(util.loadAssetFile(wsqFile));
+            Bitmap decoded = WSQDecoder.decode(util.loadAssetFile(wsqFile)).getBitmap();
             util.assertBitmapsEqual("decoded " + wsqFile + " is different from " + expectedFile, expected, decoded);
         }
     }
@@ -92,7 +91,7 @@ public class TestNistData {
 
 
                 //check image similarity
-                Bitmap decoded = WSQDecoder.decode(encoded);
+                Bitmap decoded = WSQDecoder.decode(encoded).getBitmap();
                 Bitmap reference = util.loadAssetBitmap(referenceDecodedFile);
 
                 double psnr = util.psnr(decoded, reference);

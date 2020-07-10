@@ -44,7 +44,7 @@ public class TestWSQEncoder {
             assertTrue(new WSQEncoder(expected).encode(outFile.getPath()));
             byte[] encoded = util.loadFile(outFile.getPath());
             assertNotNull(encoded);
-            Bitmap decoded = WSQDecoder.decode(encoded);
+            Bitmap decoded = WSQDecoder.decode(encoded).getBitmap();
             assertFalse(decoded.hasAlpha());
             assertSimilar(String.format("encoded %s is too different from the original", images[i]), expected, decoded);
             outFile.delete();
@@ -54,16 +54,45 @@ public class TestWSQEncoder {
             assertTrue(new WSQEncoder(expected).encode(out) > 0);
             encoded = out.toByteArray();
             assertNotNull(encoded);
-            decoded = WSQDecoder.decode(encoded);
+            decoded = WSQDecoder.decode(encoded).getBitmap();
             assertFalse(decoded.hasAlpha());
             assertSimilar(String.format("encoded %s is too different from the original", images[i]), expected, decoded);
 
             //test encode to byte array
             encoded = new WSQEncoder(expected).encode();
             assertNotNull(encoded);
-            decoded = WSQDecoder.decode(encoded);
+            decoded = WSQDecoder.decode(encoded).getBitmap();
             assertFalse(decoded.hasAlpha());
             assertSimilar(String.format("encoded %s is too different from the original", images[i]), expected, decoded);
+        }
+    }
+
+    /*
+      Encode an image with several PPIs, decode them, check PPI.
+     */
+    @Test
+    public void testEncodePpi() throws Exception {
+        int[] ppis = new int[] {-1, 500, 200, 0, 65536, Integer.MAX_VALUE};
+
+        Bitmap bmp = util.loadAssetBitmap("lena1.png");
+        for (int i = 0; i < ppis.length; i++) {
+
+            //test encode to byte array
+            byte[] encoded = new WSQEncoder(bmp).setPpi(ppis[i]).encode();
+            assertNotNull(encoded);
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(encoded);
+            assertEquals(String.format("Wrong PPI! Expected %d, got %d", ppis[i], decoded.getPpi()), ppis[i], decoded.getPpi());
+            assertSimilar("encoded image is too different from the original", bmp, decoded.getBitmap());
+        }
+
+        //test invalid ppis
+        ppis = new int[] {-2, -10, -150, Integer.MIN_VALUE};
+        for (int ppi : ppis) {
+            try {
+                byte[] encoded = new WSQEncoder(bmp).setPpi(ppi).encode();
+                fail("PPI " + ppi + " should be rejected!");
+            } catch (IllegalArgumentException ignored) {
+            }
         }
     }
 
@@ -243,21 +272,21 @@ public class TestWSQEncoder {
                 for (int i = 0; i < REPEATS; i++) {
                     //test byte array
                     byte[] encoded = new WSQEncoder(expected).encode();
-                    Bitmap decoded = WSQDecoder.decode(encoded);
+                    Bitmap decoded = WSQDecoder.decode(encoded).getBitmap();
                     assertSimilar(String.format("encoded %s is too different from the original", pngFile), expected, decoded);
 
                     //test encode to file
                     File outFile = File.createTempFile("testwsq", "tmp", ctx.getFilesDir());
                     assertTrue(new WSQEncoder(expected).encode(outFile.getPath()));
                     encoded = util.loadFile(outFile.getPath());
-                    decoded = WSQDecoder.decode(encoded);
+                    decoded = WSQDecoder.decode(encoded).getBitmap();
                     assertSimilar(String.format("encoded %s is too different from the original", pngFile), expected, decoded);
                     outFile.delete();
 
                     //test encode into stream
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     assertTrue(new WSQEncoder(expected).encode(out) > 0);
-                    decoded = WSQDecoder.decode(out.toByteArray());
+                    decoded = WSQDecoder.decode(out.toByteArray()).getBitmap();
                     assertSimilar(String.format("encoded %s is too different from the original", pngFile), expected, decoded);
                 }
             } catch (Throwable e) {

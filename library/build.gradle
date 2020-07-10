@@ -48,7 +48,7 @@ ext {
     siteUrl = 'https://github.com/gemalto/WSQForAndroid'
     gitUrl = 'https://github.com/gemalto/WSQForAndroid.git'
 
-    libraryVersion = '1.0'
+    libraryVersion = '1.2'
 
     developerId = 'michal-dvorak-thales'
     developerName = 'Michal Dvorak'

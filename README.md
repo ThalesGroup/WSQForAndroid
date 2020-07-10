@@ -5,7 +5,7 @@ An open-source WSQ image encoder/decoder for Android based on [NBIS](https://www
 ## Usage
 Decoding an image:
 ```java
-Bitmap bmp = WSQDecoder.decode(wsqData);
+Bitmap bmp = WSQDecoder.decode(wsqData).getBitmap();
 imgView.setImageBitmap(bmp);
 ```
 Encoding an image:

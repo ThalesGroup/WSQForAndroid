@@ -24,5 +24,5 @@ byte[] wsqData = new WSQEncoder(bmp)
 ## Set up
 Add dependency to your `build.gradle`
 ```groovy
-implementation 'com.gemalto.wsq:wsq-android:1.0'
+implementation 'com.gemalto.wsq:wsq-android:1.2'
 ```

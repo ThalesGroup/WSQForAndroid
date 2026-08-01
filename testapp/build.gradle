@@ -1,14 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion 29
+    namespace = "com.gemalto.wsq.test"
 
 
 
     defaultConfig {
         applicationId "com.gemalto.wsq.test"
-        minSdkVersion 14
-        targetSdkVersion 27
+        minSdkVersion 16
+        targetSdkVersion 29
         versionCode 1
         versionName "1.0"
 
@@ -19,11 +20,12 @@ android {
     signingConfigs {
         release {
             //TODO update the path to your keystore and the related variables
-            storeFile file(defaultKeyStoreFile)
-            storePassword defaultKeyStorePassword
-            keyAlias defaultKeyAlias
-            keyPassword defaultKeyPassword
+            if (project.hasProperty('defaultKeyStoreFile')) storeFile file(defaultKeyStoreFile)
+            if (project.hasProperty('defaultKeyStorePassword')) storePassword defaultKeyStorePassword
+            if (project.hasProperty('defaultKeyAlias')) keyAlias defaultKeyAlias
+            if (project.hasProperty('defaultKeyPassword')) keyPassword defaultKeyPassword
         }
+    }
 
     buildTypes {
         release {
@@ -31,8 +33,6 @@ android {
             minifyEnabled false
         }
     }
-    }
-
 }
 
 dependencies {

@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 37
     namespace = "com.gemalto.wsq.test"
 
 
@@ -9,7 +9,7 @@ android {
     defaultConfig {
         applicationId "com.gemalto.wsq.test"
         minSdkVersion 16
-        targetSdkVersion 29
+        targetSdkVersion 37
         versionCode 1
         versionName "1.0"
 

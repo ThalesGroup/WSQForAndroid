@@ -92,7 +92,6 @@ public class Util {
         try (InputStream is = ctx.getResources().getAssets().open(name)) {
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            opts.inPremultiplied = false;
             Bitmap bmp = BitmapFactory.decodeStream(is, null, opts);
             if (bmp.getConfig() != Bitmap.Config.ARGB_8888) {
                 //convert to ARGB_8888 for pixel comparison purposes

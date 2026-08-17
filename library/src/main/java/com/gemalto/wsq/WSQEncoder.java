@@ -9,11 +9,9 @@ import java.io.OutputStream;
 
 /**
  * This class encodes bitmaps into WSQ file format. It uses the NBIS code produced by NIST. This code has some
- * peculiarities. For example it strictly refuses to create WSQ if the resulting file should be bigger than
+ * peculiarities. For example, it strictly refuses to create WSQ if the resulting file should be bigger than
  * the raw input image data (i.e. bigger than {@code image_width * image_height} bytes). Keep that in mind when
  * using the {@link #setBitrate(float)} or {@link #setComment(String)} methods.
- * @author mdvorak
- *
  */
 public class WSQEncoder {
     private static final String TAG = "WSQEncoder";
@@ -33,7 +31,7 @@ public class WSQEncoder {
      */
     public static final float BITRATE_15_TO_1 = (float)0.75;
     
-    private Bitmap bmp;
+    private final Bitmap bmp;
     private float bitrate = BITRATE_5_TO_1;
     private int ppi = UNKNOWN_PPI;
     private String comment = null;
@@ -46,7 +44,7 @@ public class WSQEncoder {
     /**
      * Set the bit rate. This influences the compression ratio. Technically you can use any positive number - higher bitrate means
      * higher quality and lower compression ratio. However, in practise you should use either {@link #BITRATE_5_TO_1},
-     * or {@link #BITRATE_15_TO_1}. These values are specified and tested by NIST and they produce the expected results.
+     * or {@link #BITRATE_15_TO_1}. These values are specified and tested by NIST, and they produce the expected results.
      * If you use other values, you might get weird results or no results at all.<br><br>
      *
      * Default value: {@link #BITRATE_5_TO_1}
@@ -115,22 +113,17 @@ public class WSQEncoder {
     public boolean encode(String fileName) {
         byte[] data = encodeInternal();
         if (data == null || data.length == 0) return false;
-        FileOutputStream out = null;
-        try {
-            out = new FileOutputStream(fileName);
+        try (FileOutputStream out = new FileOutputStream(fileName)) {
             out.write(data);
             return true;
         } catch (IOException e) {
             Log.e(TAG, "Error writing WSQ into " + fileName, e);
             return false;
-        } finally {
-            try {if (out != null) out.close();} catch (IOException ignored){}
         }
 
     }
 
     private byte[] encodeInternal() {
-        if (bmp == null) return null;
         int[] pixels = new int[bmp.getWidth() * bmp.getHeight()];
         bmp.getPixels(pixels, 0, bmp.getWidth(), 0, 0, bmp.getWidth(), bmp.getHeight());
         return Native.encodeWSQByteArray(pixels, bmp.getWidth(), bmp.getHeight(), bitrate, ppi, comment);

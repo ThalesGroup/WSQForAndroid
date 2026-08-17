@@ -2,6 +2,7 @@ package com.gemalto.wsq;
 
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
+import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,16 +10,16 @@ import java.io.InputStream;
 
 /**
  * This class decodes WSQ files into a bitmap.
- * @author mdvorak
- *
  */
 public class WSQDecoder {
+    private static final String TAG = "WSQDecoder";
+
     /**
      * The output of the WSQ decoding process. Contains the decoded bitmap and the pixels-per-inch density information.
      */
     public static class WSQDecodedImage {
-        private Bitmap bitmap;
-        private int ppi;
+        private final Bitmap bitmap;
+        private final int ppi;
 
         private WSQDecodedImage(Bitmap bitmap, int ppi) {
             this.bitmap = bitmap;
@@ -80,7 +81,7 @@ public class WSQDecoder {
             }
             return decode(out.toByteArray());
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error reading WSQ data", e);
             return null;
         }
     }

@@ -10,10 +10,12 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
-import static junit.framework.Assert.assertNull;
+import static org.junit.Assert.*;
 
-import androidx.test.InstrumentationRegistry;
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 /**
@@ -29,7 +31,7 @@ public class TestWSQDecoder {
 
     @Before
     public void init() {
-        ctx = InstrumentationRegistry.getTargetContext();
+        ctx = ApplicationProvider.getApplicationContext();
         util = new Util(ctx);
     }
 
@@ -66,6 +68,111 @@ public class TestWSQDecoder {
             byte[] data = util.loadAssetFile(wsqFiles[i]);
             decoded = WSQDecoder.decode(data);
             util.assertBitmapsEqual("decoded " + wsqFiles[i] + " is different from " + expectedFiles[i], decoded.getBitmap(), expected);
+        }
+    }
+
+    private static final byte[] COMMENT_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".getBytes();
+
+    @Test
+    public void testComments() throws Exception {
+        Bitmap expectedBmp = util.loadAssetBitmap("256x256.png");
+
+        //file with no comments
+        {
+            byte[] wsqNoComments = util.loadAssetFile("comments/no-comments.wsq");
+
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(wsqNoComments);
+
+            assertNotNull(decoded);
+            util.assertBitmapsEqual("wrong bitmap data", expectedBmp, decoded.getBitmap());
+            assertEquals("wrong number of comments", 0, decoded.getComments().size());
+        }
+
+        //file with comment containing all possible byte values (0x00-0xFF)
+        {
+            byte[] wsqBytes = util.loadAssetFile("comments/comment-all-bytes.wsq");
+
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(wsqBytes);
+
+            assertNotNull(decoded);
+            util.assertBitmapsEqual("wrong bitmap data", expectedBmp, decoded.getBitmap());
+            assertEquals("wrong number of comments", 1, decoded.getComments().size());
+
+            byte[] expectedComment = new byte[256];
+            for (int i = 0; i < 256; i++) {
+                expectedComment[i] = (byte) i;
+            }
+            assertArrayEquals("wrong comment data", expectedComment, decoded.getComments().get(0));
+        }
+
+        String[] lengthTestFileNames = new String[] {
+                "comments/comment-length-0.wsq",
+                "comments/comment-length-1.wsq",
+                "comments/comment-length-2.wsq",
+                "comments/comment-length-65533.wsq",
+        };
+
+        for (String fileName : lengthTestFileNames) {
+            byte[] wsq = util.loadAssetFile(fileName);
+
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(wsq);
+            assertNotNull(decoded);
+            util.assertBitmapsEqual("wrong bitmap data", expectedBmp, decoded.getBitmap());
+            assertEquals("wrong number of comments", 1, decoded.getComments().size());
+
+            int expectedCommentLength = Integer.parseInt(fileName.split("[-.]")[2]);
+            byte[] expectedComment = util.createComment(COMMENT_ALPHABET, expectedCommentLength);
+            assertArrayEquals("decoded comment data not as expected", expectedComment, decoded.getComments().get(0));
+        }
+
+        String[] multiCommentLengthTestFileNames = new String[] {
+                "comments/comment-lengths-65533+2+0+65533+1.wsq",
+        };
+
+        for (String fileName : multiCommentLengthTestFileNames) {
+            byte[] wsq = util.loadAssetFile(fileName);
+
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(wsq);
+            assertNotNull(decoded);
+            util.assertBitmapsEqual("wrong bitmap data", expectedBmp, decoded.getBitmap());
+
+            List<Integer> expectedCommentLengths = new ArrayList<>();
+            for (String length : fileName.split("[-.]")[2].split("\\+")) {
+                expectedCommentLengths.add(Integer.parseInt(length));
+            }
+
+            assertEquals("wrong number of comments", expectedCommentLengths.size(), decoded.getComments().size());
+
+            for (int i = 0; i < expectedCommentLengths.size(); i++) {
+                int expectedCommentLength = expectedCommentLengths.get(i);
+                byte[] expectedComment = util.createComment(COMMENT_ALPHABET, expectedCommentLength);
+                assertArrayEquals("decoded comment data not as expected", expectedComment, decoded.getComments().get(i));
+            }
+        }
+
+        String[] commentOrderTestFileNames = new String[] {
+                "comments/comment-order-ABCD+EFGH+I+JKLM.wsq",
+                "comments/comment-order-EFGH+I+ABCD+JKLM.wsq",
+        };
+
+        for (String fileName : commentOrderTestFileNames) {
+            byte[] wsq = util.loadAssetFile(fileName);
+
+            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(wsq);
+            assertNotNull(decoded);
+            util.assertBitmapsEqual("wrong bitmap data", expectedBmp, decoded.getBitmap());
+
+            List<byte[]> expectedComments = new ArrayList<>();
+            for (String comment : fileName.split("[-.]")[2].split("\\+")) {
+                expectedComments.add(comment.getBytes());
+            }
+
+            assertEquals("wrong number of comments", expectedComments.size(), decoded.getComments().size());
+
+            for (int i = 0; i < expectedComments.size(); i++) {
+                byte[] expectedComment = expectedComments.get(i);
+                assertArrayEquals("decoded comment data not as expected", expectedComment, decoded.getComments().get(i));
+            }
         }
     }
 

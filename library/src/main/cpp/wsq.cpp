@@ -87,37 +87,6 @@ jintArray prepareReturnData(JNIEnv *env, image_data_t *outImage) {
     return ret;
 }
 
-JNIEXPORT jintArray JNICALL Java_com_gemalto_wsq_Native_decodeWSQFile(JNIEnv *env, jclass thiz, jstring fileName) {
-    int ilen;
-    unsigned char *idata;
-    char *ifile;
-    image_data_t outImage;
-    jintArray ret = NULL;
-
-    //sanity check
-    if (fileName == NULL) return NULL;
-
-    const char *c_file = env->GetStringUTFChars(fileName, NULL);
-    ifile = (char *) malloc((strlen(c_file) + 1) * sizeof(char));
-    strcpy(ifile, c_file);
-    env->ReleaseStringUTFChars(fileName, c_file);
-    
-    if((read_raw_from_filesize(ifile, &idata, &ilen))) {
-        LOGE("Error reading file %s", ifile);
-        free(ifile);
-        return NULL;
-    }
-    
-    if (decodeWSQ(idata, ilen, &outImage) == EXIT_SUCCESS) {
-        ret = prepareReturnData(env, &outImage);
-    }
-    
-    free(ifile);
-    free(idata);
-
-    return ret;
-}
-
 JNIEXPORT jintArray JNICALL Java_com_gemalto_wsq_Native_decodeWSQByteArray(JNIEnv *env, jclass thiz, jbyteArray data) {
     int ilen;
     unsigned char *idata;
@@ -146,30 +115,14 @@ JNIEXPORT jintArray JNICALL Java_com_gemalto_wsq_Native_decodeWSQByteArray(JNIEn
 
 static const int MAX_COMMENT_LEN = (2 << 16) - 3;
 
-JNIEXPORT jbyteArray JNICALL Java_com_gemalto_wsq_Native_encodeWSQByteArray(JNIEnv *env, jclass thiz, jintArray pixels, jint width, jint height, jfloat r_bitrate, jint ppi, jstring comment) {
+JNIEXPORT jbyteArray JNICALL Java_com_gemalto_wsq_Native_encodeWSQByteArray(JNIEnv *env, jclass thiz, jintArray pixels, jint width, jint height, jfloat r_bitrate, jint ppi) {
     int i;
     unsigned char *idata;    /* Input RGB data */
     unsigned char *odata;    /* Encoded WSQ data */
     int olen;                /* Number of bytes in the WSQ data. */
     jint *bufferPtr;
-    char *comment_text = NULL;      /* Comment text */
     jbyteArray ret;          /* Output data */
-    size_t commentLen;
-    
-    //copy comment
-    if (comment != NULL) {
-        const char *tmp = env->GetStringUTFChars(comment, NULL);
-        commentLen = strlen(tmp);
 
-        //make sure we don't copy a comment longer, than the NBIS format supports
-        if (commentLen > MAX_COMMENT_LEN) commentLen = MAX_COMMENT_LEN;
-        comment_text = (char *) malloc((commentLen + 1) * sizeof(char));
-        strncpy(comment_text, tmp, commentLen);
-        comment_text[commentLen] = 0;
-
-        env->ReleaseStringUTFChars(comment, tmp);
-    }
-    
     //copy pixels from java and convert to grey
     idata = (unsigned char *)malloc(width * height * sizeof(unsigned char));
     bufferPtr = env->GetIntArrayElements(pixels, NULL);
@@ -184,19 +137,13 @@ JNIEXPORT jbyteArray JNICALL Java_com_gemalto_wsq_Native_encodeWSQByteArray(JNIE
     
     /* Encode/compress the image pixmap. */
     if(wsq_encode_mem(&odata, &olen, r_bitrate,
-                             idata, width, height, 8 /* bit depth */, ppi, comment_text)){
+                             idata, width, height, 8 /* bit depth */, ppi, NULL)){
         free(idata);
-        if(comment_text != NULL) {
-            free(comment_text);
-        }
         return NULL;
     }
 
     free(idata);
-    if(comment_text != NULL) {
-        free(comment_text);
-    }
-    
+
     ret = env->NewByteArray(olen);
     env->SetByteArrayRegion(ret, 0, olen, (jbyte *)odata);
     free(odata);

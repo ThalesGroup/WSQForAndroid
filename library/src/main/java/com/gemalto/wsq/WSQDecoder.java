@@ -5,8 +5,12 @@ import android.graphics.Bitmap.Config;
 import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class decodes WSQ files into a bitmap.
@@ -20,10 +24,12 @@ public class WSQDecoder {
     public static class WSQDecodedImage {
         private final Bitmap bitmap;
         private final int ppi;
+        private final List<byte[]> comments;
 
         private WSQDecodedImage(Bitmap bitmap, int ppi) {
             this.bitmap = bitmap;
             this.ppi = ppi;
+            this.comments = new ArrayList<>();
         }
 
         /**
@@ -39,6 +45,10 @@ public class WSQDecoder {
         public int getPpi() {
             return ppi;
         }
+
+        public List<byte[]> getComments() {
+            return comments;
+        }
     }
 
     /**
@@ -48,8 +58,12 @@ public class WSQDecoder {
      * @return The decoded image, or null if the image data could not be decoded.
      */
     public static WSQDecodedImage decode(String filename) {
-        int[] res = Native.decodeWSQFile(filename);
-        return nativeToImageData(res);
+        try {
+            if (filename != null) return decode(new FileInputStream(filename));
+        } catch (FileNotFoundException e) {
+            //do nothing, we just return null
+        }
+        return null;
     }
     
     /**
@@ -60,7 +74,15 @@ public class WSQDecoder {
      */
     public static WSQDecodedImage decode(byte[] data) {
         int[] res = Native.decodeWSQByteArray(data);
-        return nativeToImageData(res);
+        WSQDecodedImage ret = nativeToImageData(res);
+        if (ret != null) {
+            try {
+                ret.comments.addAll(new CommentCodec().readComments(data));
+            } catch (CommentCodec.CommentCodecException e) {
+                Log.e(TAG, "error loading comments from wsq data", e);
+            }
+        }
+        return ret;
     }
 
     /**

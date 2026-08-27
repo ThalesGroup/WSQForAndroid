@@ -3,7 +3,7 @@ package com.gemalto.wsq;
 import android.content.Context;
 import android.graphics.Bitmap;
 
-import androidx.test.InstrumentationRegistry;
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.Before;
@@ -28,7 +28,7 @@ public class TestNistData {
 
     @Before
     public void init() {
-        ctx = InstrumentationRegistry.getTargetContext();
+        ctx = ApplicationProvider.getApplicationContext();
         util = new Util(ctx);
     }
 

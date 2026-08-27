@@ -9,11 +9,13 @@ import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
-import androidx.test.InstrumentationRegistry;
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 @RunWith(AndroidJUnit4.class)
@@ -26,7 +28,7 @@ public class TestWSQEncoder {
 
     @Before
     public void init() {
-        ctx = InstrumentationRegistry.getTargetContext();
+        ctx = ApplicationProvider.getApplicationContext();
         util = new Util(ctx);
     }
 
@@ -76,21 +78,28 @@ public class TestWSQEncoder {
         int[] ppis = new int[] {-1, 500, 200, 0, 65536, Integer.MAX_VALUE};
 
         Bitmap bmp = util.loadAssetBitmap("lena1.png");
-        for (int i = 0; i < ppis.length; i++) {
+        for (int ppi : ppis) {
 
             //test encode to byte array
-            byte[] encoded = new WSQEncoder(bmp).setPpi(ppis[i]).encode();
+            byte[] encoded = new WSQEncoder(bmp).setPpi(ppi).encode();
             assertNotNull(encoded);
-            WSQDecoder.WSQDecodedImage decoded = WSQDecoder.decode(encoded);
-            assertEquals(String.format("Wrong PPI! Expected %d, got %d", ppis[i], decoded.getPpi()), ppis[i], decoded.getPpi());
-            assertSimilar("encoded image is too different from the original", bmp, decoded.getBitmap());
+
+            byte[] nistComHeader = getWsqComments(encoded, false).get(0);
+            String nistComPpiLine = null;
+            for (String line : new String(nistComHeader).split("\n")) {
+                if (line.startsWith("PPI ")) {
+                    nistComPpiLine = line;
+                    break;
+                }
+            }
+            assertEquals("Wrong PPI in NIST_COM", "PPI " + ppi, nistComPpiLine);
         }
 
         //test invalid ppis
         ppis = new int[] {-2, -10, -150, Integer.MIN_VALUE};
         for (int ppi : ppis) {
             try {
-                byte[] encoded = new WSQEncoder(bmp).setPpi(ppi).encode();
+                new WSQEncoder(bmp).setPpi(ppi).encode();
                 fail("PPI " + ppi + " should be rejected!");
             } catch (IllegalArgumentException ignored) {
             }
@@ -132,51 +141,108 @@ public class TestWSQEncoder {
     private static final String specialChars = "ěščřžýáíéóůďťňテカキクケコ\t\n普通话ХѠЦЧШЩЪقصفعسن";
 
     @Test
-    public void testComment() throws Exception {
-        Bitmap orig = util.loadAssetBitmap("1024x1024.png");
+    public void testStringComments() throws Exception {
+        Bitmap orig = util.loadAssetBitmap("256x256.png");
         //ascii characters - test minimum, normal and maximum sizes
         for (int commentLength : new int[]{0, 1, 50, maxCommentLength - 1, maxCommentLength}) {
             StringBuilder str = new StringBuilder();
             while (str.length() < commentLength) str.append(asciiChars);
             String comment = commentLength == 0 ? "" : str.substring(0, commentLength);
 
-            byte[] encoded = new WSQEncoder(orig).setBitrate(0.01f).setComment(comment).encode();
-            assertNotNull("error encoding image with comment (length \" + commentLength + \" bytes)", encoded);
-            assertTrue("comment (length " + commentLength + " bytes) not found in wsq data", findWsqComment(encoded, comment));
+            byte[] encoded = new WSQEncoder(orig).setBitrate(WSQEncoder.BITRATE_5_TO_1).addComment(comment).encode();
+            assertNotNull("error encoding image with comment (length " + commentLength + " bytes)", encoded);
+            List<byte[]> decodedComments = getWsqComments(encoded, true);
+            assertEquals("wrong number of comments", 1, decodedComments.size());
+            assertArrayEquals("wrong comment data", comment.getBytes(), decodedComments.get(0));
         }
 
-        //special characters
-        byte[] encoded = new WSQEncoder(orig).setBitrate(0.01f).setComment(specialChars).encode();
-        assertNotNull("error encoding image with comment with special characters (length \" + commentLength + \" bytes)", encoded);
-        assertTrue("comment with special characters not found in wsq data", findWsqComment(encoded, specialChars));
+        {
+            //special characters
+            byte[] encoded = new WSQEncoder(orig).setBitrate(WSQEncoder.BITRATE_5_TO_1).addComment(specialChars).encode();
+            assertNotNull("error encoding image with comment with special characters (length " + specialChars.getBytes().length + " bytes)", encoded);
+            List<byte[]> decodedComments = getWsqComments(encoded, true);
+            assertEquals("wrong number of comments", 1, decodedComments.size());
+            assertArrayEquals("wrong comment data", specialChars.getBytes(), decodedComments.get(0));
+        }
+
+        {
+            //multiple comments
+            String[] strings = new String[]{
+                    "abc",
+                    "defghij",
+                    "klmnop",
+                    "qrs",
+                    "tuvwxyz"
+            };
+            WSQEncoder enc = new WSQEncoder(orig).setBitrate(WSQEncoder.BITRATE_5_TO_1);
+            for (String s : strings) {
+                enc.addComment(s);
+            }
+            byte[] encoded = enc.encode();
+            assertNotNull("error encoding image with multiple strings", encoded);
+            List<byte[]> decodedComments = getWsqComments(encoded, true);
+            assertEquals("wrong number of comments", strings.length, decodedComments.size());
+            for (int i = 0; i < strings.length; i++) {
+                assertArrayEquals("wrong comment data", strings[i].getBytes(), decodedComments.get(i));
+            }
+        }
     }
 
-    //look for comment header + data in the wsq
-    private boolean findWsqComment(byte[] data, String comment) {
+    @Test
+    public void testByteArrayComments() throws Exception {
+        Bitmap orig = util.loadAssetBitmap("256x256.png");
+        //have some comments with byte 0x00 to make sure we encode them correctly
+        List<byte[]> comments = new ArrayList<>(Arrays.asList(
+                new byte[] {'A', 0x00, 'B'},
+                new byte[] {'A', 'B', 'C'},
+                new byte[] {'D', 0x00, 'E'},
+                new byte[] {'D', 'E', 'F'}
+        ));
+        byte[] allBytes = new byte[256];
+        for (int i = 0; i < allBytes.length; i++) allBytes[i] = (byte)i;
+        comments.add(allBytes);
+
+        WSQEncoder enc = new WSQEncoder(orig).setBitrate(WSQEncoder.BITRATE_5_TO_1);
+        for (byte[] comment : comments) {
+            enc.addComment(comment);
+        }
+        byte[] encoded = enc.encode();
+
+        assertNotNull("error encoding image with comment with byte 0", encoded);
+        List<byte[]> encodedComments = getWsqComments(encoded, true);
+        assertEquals("unexpected number of comments", 5, encodedComments.size());
+        for (int i = 0; i < comments.size(); i++) {
+            assertArrayEquals("wrong comment " + i, comments.get(i), encodedComments.get(i));
+        }
+    }
+
+
+
+    //look for comment headers + data directly in the wsq data; extract all of them
+    private List<byte[]> getWsqComments(byte[] data, boolean skipNistCom) {
+        List<byte[]> ret = new ArrayList<>();
+        byte[] nistComHeader = "NIST_COM".getBytes();
+
         //the comment block looks like FFA8 <length> <comment data>
         //<length> is coded on two bytes and these two bytes are included in the length (i.e. length of an empty comment is 2)
-        byte[] stringData = comment.getBytes();
-        byte[] stringHeader = new byte[4];
-        stringHeader[0] = (byte)0xFF;
-        stringHeader[1] = (byte)0xA8;
-        stringHeader[2] = (byte)((stringData.length + 2) >> 8);
-        stringHeader[3] = (byte)(stringData.length + 2);
+        //the first two bytes is wsq start marker, we skip it
+        //all comments form a contiguous block after the wsq start marker
+        int offset = 2;
+        while (offset <= data.length - 4) {
+            if (data[offset] != (byte)0xFF || data[offset + 1] != (byte)0xA8) {
+                //no more comments
+                break;
+            }
 
-        for (int i = 0; i <= data.length - stringData.length - stringHeader.length; i++) {
-            boolean headerFound = true;
-            for (int j = 0; j < stringHeader.length && headerFound; j++) {
-                if (data[i + j] != stringHeader[j]) headerFound = false;
+            int length = ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
+
+            if (!skipNistCom || !Arrays.equals(data, offset + 4, offset + 4 + nistComHeader.length, nistComHeader, 0, nistComHeader.length)) {
+                ret.add(Arrays.copyOfRange(data, offset + 4, offset + 2 + length));
             }
-            if (!headerFound) continue;
-            boolean dataFound = true;
-            for (int j = 0; j < stringData.length && dataFound; j++) {
-                if (data[i + stringHeader.length + j] != stringData[j]) dataFound = false;
-            }
-            if (dataFound) {
-                return true;
-            }
+
+            offset += length + 2;
         }
-        return false;
+        return ret;
     }
 
 
@@ -204,7 +270,7 @@ public class TestWSQEncoder {
         try {
             byte[] data = new byte[maxCommentLength + 1];
             Arrays.fill(data, (byte)'A');
-            new WSQEncoder(expected).setComment(new String(data));
+            new WSQEncoder(expected).addComment(new String(data));
             fail("Exception should have been thrown");
         } catch (IllegalArgumentException ignored) {}
 
@@ -212,7 +278,7 @@ public class TestWSQEncoder {
         try {
             char[] data = new char[(maxCommentLength / 2) + 1];
             Arrays.fill(data, 'ě');
-            new WSQEncoder(expected).setComment(new String(data));
+            new WSQEncoder(expected).addComment(new String(data));
             fail("Exception should have been thrown");
         } catch (IllegalArgumentException ignored) {}
 
@@ -221,7 +287,7 @@ public class TestWSQEncoder {
             char[] data = new char[maxCommentLength];
             Arrays.fill(data, 'A');
             data[data.length - 1] = 'š';
-            new WSQEncoder(expected).setComment(new String(data));
+            new WSQEncoder(expected).addComment(new String(data));
             fail("Exception should have been thrown");
         } catch (IllegalArgumentException ignored) {}
     }

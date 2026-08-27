@@ -6,12 +6,20 @@ import android.util.Log;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * This class encodes bitmaps into WSQ file format. It uses the NBIS code produced by NIST. This code has some
  * peculiarities. For example, it strictly refuses to create WSQ if the resulting file should be bigger than
  * the raw input image data (i.e. bigger than {@code image_width * image_height} bytes). Keep that in mind when
- * using the {@link #setBitrate(float)} or {@link #setComment(String)} methods.
+ * using the {@link #setBitrate(float)} method.<br/><br/>
+ *
+ * The NBIS encoder adds a special "NISTCOM" comment to the resulting file encoding the image width,
+ * height, PPI and some other image attributes as described for example in
+ * <a href="https://www.nist.gov/system/files/documents/srd/Spec-db-14.pdf">this file</a>. It's not
+ * a mandatory part of a WSQ image, but it doesn't seem to hurt anything, so I leave it there.
  */
 public class WSQEncoder {
     private static final String TAG = "WSQEncoder";
@@ -34,7 +42,8 @@ public class WSQEncoder {
     private final Bitmap bmp;
     private float bitrate = BITRATE_5_TO_1;
     private int ppi = UNKNOWN_PPI;
-    private String comment = null;
+
+    private final List<byte[]> comments = new ArrayList<>();
 
     public WSQEncoder(Bitmap bmp) {
         if (bmp == null) throw new IllegalArgumentException("Bitmap must not be null!");
@@ -70,18 +79,36 @@ public class WSQEncoder {
     }
 
     /**
-     * Sets a text comment that will be stored in the WSQ file. Maximum comment length is 65533 bytes.
-     * (But keep in mind that the NBIS code will throw an error if the WSQ data length + comment length
-     * should be longer than the original image uncompressed data length.)
+     * Adds a comment that will be stored in the WSQ file. Maximum comment length is 65533 bytes.
+     * <br/><br/>
+     * The encoded file will always contain a special "NISTCOM" comment containing various attributes
+     * of the image in text form. This method lets you add comments in addition to the NISTCOM.
+     * <br/><br/>
+     * Keep in mind that while you can technically store arbitrary data, the reference NBIS code
+     * will break on comments containing the {@code 0x00} byte as it assumes a null-terminated string.
+     * It can be assumed that a lot of code based on the NBIS implementation might break as well.
      * @param comment the comment
      * @return this {@code WSQEncoder} instance
      */
-    public WSQEncoder setComment(final String comment) {
-        if (comment != null && comment.getBytes().length > MAX_COMMENT_LENGTH) {
+    public WSQEncoder addComment(final byte[] comment) {
+        if (comment == null) {
+            throw new IllegalArgumentException("Comment cannot be null");
+        }
+        if (comment.length > MAX_COMMENT_LENGTH) {
             throw new IllegalArgumentException("Maximum comment length is " + MAX_COMMENT_LENGTH + " bytes");
         }
-        this.comment = comment;
+        this.comments.add(Arrays.copyOf(comment, comment.length));
         return this;
+    }
+
+    /**
+     * A convenience function which converts the input String to its UTF-8 byte array representation
+     * and adds it to comments.
+     * @param comment the String comment
+     * @return this {@code WSQEncoder} instance
+     */
+    public WSQEncoder addComment(final String comment) {
+        return this.addComment(comment.getBytes());
     }
 
     /**
@@ -126,6 +153,15 @@ public class WSQEncoder {
     private byte[] encodeInternal() {
         int[] pixels = new int[bmp.getWidth() * bmp.getHeight()];
         bmp.getPixels(pixels, 0, bmp.getWidth(), 0, 0, bmp.getWidth(), bmp.getHeight());
-        return Native.encodeWSQByteArray(pixels, bmp.getWidth(), bmp.getHeight(), bitrate, ppi, comment);
+        byte[] wsqData = Native.encodeWSQByteArray(pixels, bmp.getWidth(), bmp.getHeight(), bitrate, ppi);
+        if (wsqData != null && !comments.isEmpty()) {
+            try {
+                wsqData = new CommentCodec().writeComments(wsqData, comments);
+            } catch (CommentCodec.CommentCodecException e) {
+                Log.e(TAG, "Error encoding comments to the file", e);
+                return null;
+            }
+        }
+        return wsqData;
     }
 }

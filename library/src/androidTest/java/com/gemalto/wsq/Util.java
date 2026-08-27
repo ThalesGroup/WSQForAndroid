@@ -3,7 +3,6 @@ package com.gemalto.wsq;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.ColorSpace;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
@@ -125,6 +124,17 @@ public class Util {
 
         return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888);
 
+    }
+
+    public byte[] createComment(byte[] pattern, int length) {
+        byte[] out = new byte[length];
+        int offset = 0;
+        while (offset < length) {
+            int chunkSize = Math.min(pattern.length, length - offset);
+            System.arraycopy(pattern, 0, out, offset, chunkSize);
+            offset += chunkSize;
+        }
+        return out;
     }
 
     double meanSquareError(int[] pixels1, int[] pixels2) {

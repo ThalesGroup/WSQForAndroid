@@ -30,7 +30,7 @@ byte[] wsqData = new WSQEncoder(bmp)
 
 ## Advanced Usage
 ### Comments
-A WSQ file can contain multiple comments. A comment is a byte array whose interpretation is up to the application. Please note that the reference [NBIS](https://www.nist.gov/services-resources/software/nist-biometric-image-software-nbis) code is not capable to properly process comments containing a `0x00` byte. The **WSQForAndroid** library uses its own code to handle comments, therefore you can use it to store and load binary data (or text data which includes `0x00` bytes, like UCS-2 encoded text) to and from WSQ comments. It may, however, introduce compatibility issues with any software based on the NBIS code.
+A WSQ file can contain multiple comments. A comment is a byte array whose interpretation is up to the application. Please note that the reference [NBIS](https://www.nist.gov/services-resources/software/nist-biometric-image-software-nbis) code is not able to properly process comments containing a `0x00` byte. The **WSQForAndroid** library uses its own code to handle comments, therefore you can use it to store and load binary data (or text data which includes `0x00` bytes, like UCS-2 encoded text) to and from WSQ comments. It may, however, introduce compatibility issues with any software based on the NBIS code.
 
 In addition to any comments provided by you, each produced WSQ image will also include a so-called NISTCOM comment containing image metadata in text form. The NISTCOM comment format is described [here](https://www.nist.gov/system/files/documents/srd/Spec-db-14.pdf).
 
